@@ -1,6 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
+import { createServer } from 'node:net';
 
-const PORT = Number(process.env.PLAYWRIGHT_PORT ?? 8124);
+const PORT = Number(process.env.PLAYWRIGHT_PORT ?? await findFreePort());
+process.env.PLAYWRIGHT_PORT = String(PORT);
 const startCommand = 'node scripts/e2e-server.js';
 
 // One process serves both halves, so the test server is the real server — not a
@@ -22,7 +24,7 @@ export default defineConfig({
   webServer: {
     command: startCommand,
     url: `http://127.0.0.1:${PORT}/`,
-    reuseExistingServer: true,
+    reuseExistingServer: false,
     timeout: 30_000,
     env: {
       PORT: String(PORT),
@@ -33,4 +35,15 @@ export default defineConfig({
     },
   },
 });
+
+async function findFreePort() {
+  const probe = createServer();
+  await new Promise((resolve, reject) => {
+    probe.once('error', reject);
+    probe.listen(0, '127.0.0.1', resolve);
+  });
+  const port = probe.address().port;
+  await new Promise((resolve, reject) => probe.close((error) => error ? reject(error) : resolve()));
+  return port;
+}
 
