@@ -1,20 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
-import net from 'node:net';
 
-const requestedPort = Number(process.env.PLAYWRIGHT_PORT ?? 0);
-const PORT = requestedPort || await freePort();
-
-function freePort() {
-  return new Promise((resolve, reject) => {
-    const probe = net.createServer();
-    probe.once('error', reject);
-    probe.listen(0, '127.0.0.1', () => {
-      const address = probe.address();
-      const port = typeof address === 'object' && address ? address.port : 0;
-      probe.close((error) => error ? reject(error) : resolve(port));
-    });
-  });
-}
+const PORT = Number(process.env.PLAYWRIGHT_PORT ?? 8124);
+const startCommand = process.platform === 'win32'
+  ? 'npm.cmd run build && node scripts/e2e-server.js'
+  : 'npm run build && node scripts/e2e-server.js';
 
 // One process serves both halves, so the test server is the real server — not a
 // stand-in. `npm test` builds the SPA first, then boots it against a throwaway DB.
@@ -33,9 +22,9 @@ export default defineConfig({
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
 
   webServer: {
-    command: 'node scripts/e2e-server.js',
+    command: startCommand,
     url: `http://localhost:${PORT}/`,
-    reuseExistingServer: false,
+    reuseExistingServer: true,
     timeout: 30_000,
     env: {
       PORT: String(PORT),
