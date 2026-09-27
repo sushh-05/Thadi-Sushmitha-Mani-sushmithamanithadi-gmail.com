@@ -71,3 +71,19 @@ chose not to build belongs here with its reason._
 
 _Things you know are wrong, unfinished, or that you would do differently with another day. Listing
 these honestly is worth more than pretending they do not exist — we will find them anyway._
+## 2026-09-27 — Authorization core and API baseline
+
+### Prediction
+The public suites would fail in dependency order because the starter shipped explicit stubs for JWT, context, permissions, lifecycle, routes, and the UI.
+
+### Observation
+The initial JWT and permission checks failed at their stubs, and the API could not reset on Windows because the loader used a URL pathname as a filesystem path.
+
+### Change to my model
+I implemented defensive HS256 verification, structural organization scoping, database-driven permission resolution, lifecycle invariants, audit insertion, and the API routes before building the console.
+
+### Evidence
+`node scripts/check-jwt.js`, `node scripts/check-permissions.js`, and `node scripts/check-personalisation.js` now pass (43, 35, and 18 assertions). `node scripts/check-api.js` passes 66 assertions. `npm.cmd run build` passes after using Vite's runner config loader on Windows.
+
+### Next step
+Run the browser suite from a clean checkout; the backend and production build are green.

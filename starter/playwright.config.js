@@ -20,7 +20,7 @@ export default defineConfig({
 
   webServer: {
     command: 'node scripts/load-db.js && node server/index.js',
-    url: `http://localhost:${PORT}/v1/auth/me`,
+    url: `http://localhost:${PORT}/`,
     reuseExistingServer: false,
     timeout: 30_000,
     env: {

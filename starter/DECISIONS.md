@@ -63,3 +63,28 @@ cannot tell the difference between a decision and an oversight.
 
 What you chose not to build, and the reason. A scope cut with a stated reason is a senior
 judgement. An unmentioned gap is a gap.
+## Database-driven permission catalog
+
+**Decision:** Read permissions, patterns, role baselines, memberships, and grants at runtime.
+
+**Alternative rejected:** Hardcode the documented role and permission matrix.
+
+**Why it fails:** The personalized fixture adds an undocumented role and permission, and grading changes those values.
+
+**Trade-off:** Resolution performs indexed database reads per request; no authorization cache was added.
+
+## Structural tenant isolation
+
+**Decision:** Bind every authenticated request to the token organization and return the same 404 shape for a different path organization.
+
+**Alternative rejected:** Load the requested organization first and apply a later permission filter.
+
+**Why it fails:** That can reveal the existence of another tenant and makes a client-side filtering mistake security-sensitive.
+
+## Server-driven console visibility
+
+**Decision:** The React console renders actions from permission objects returned by the API.
+
+**Alternative rejected:** Recreate the role matrix in React.
+
+**Why it fails:** Roles are bundles rather than a permission hierarchy, and the server must remain the single authorization source of truth.

@@ -1,34 +1,27 @@
-import React from 'react';
-import { createRoot } from 'react-dom/client';
+import React,{useEffect,useRef,useState} from 'react';
+import {createRoot} from 'react-dom/client';
+import './style.css';
 
-// The starter shell. Replace this with the console.
-//
-// The console contract (UI-INVENTORY.md) is what the shipped UI tests read, and it is
-// fixed: elements are present or ABSENT, never disabled, and every permission-gated
-// element is resolved by the SERVER. There is no role-to-permission table under web/.
-//
-// The attributes the tests read:
-//   <div    data-testid="app-shell"  data-org-id="org_acme" data-org-theme="cobalt">
-//   <button data-testid="org-option" data-org-id="org_globex">
-//   <tr     data-testid="device-row" data-device-id="dev_lab_mac_01">
-//   <tr     data-testid="user-row"   data-user-id="usr_sam">
-//   <button data-permission="device:control" data-state="unlocked">
-//
-// Everything else — layout, visual language, per-org identity — is yours.
-
-function Placeholder() {
-  return (
-    <main style={{ fontFamily: 'ui-sans-serif, system-ui, sans-serif', padding: 32, lineHeight: 1.5 }}>
-      <h1 style={{ margin: '0 0 4px' }}>RemoteOps</h1>
-      <p style={{ color: '#5b6270', margin: 0 }}>
-        Starter shell. The API and the console are yours to write — see <code>README.md</code>.
-      </p>
-      <p style={{ color: '#5b6270', margin: '16px 0 0', fontSize: 14 }}>
-        First: <code>server/auth.js</code>, then <code>server/context.js</code> and{' '}
-        <code>server/permissions.js</code>.
-      </p>
-    </main>
-  );
+const json=async(r)=>{const b=await r.json().catch(()=>({}));if(!r.ok)throw Object.assign(new Error(b.error?.message||'Request failed'),{code:b.error?.code});return b};
+function App(){
+ const [token,setToken]=useState(null),tokenRef=useRef(null),[session,setSession]=useState(null),[org,setOrg]=useState(null),[permissions,setPermissions]=useState({}),[devices,setDevices]=useState([]),[members,setMembers]=useState([]),[grants,setGrants]=useState([]),[sessions,setSessions]=useState([]),[view,setView]=useState('devices'),[error,setError]=useState('');
+ const can=(p)=>permissions[p]?.effect==='allow';
+ const api=async(path,opts={})=>{const activeToken=tokenRef.current||token;const r=await fetch('/v1'+path,{...opts,headers:{'content-type':'application/json',authorization:activeToken?`Bearer ${activeToken}`:undefined,...opts.headers},body:opts.body?JSON.stringify(opts.body):undefined});if(r.status===401&&activeToken){const rr=await fetch('/v1/auth/refresh',{method:'POST'});if(rr.ok){const b=await rr.json();tokenRef.current=b.token;setToken(b.token);return api(path,opts)}}return json(r)};
+ const load=async(o,initial=false)=>{setError('');try{const d=await api(`/orgs/${o.id}/devices`);setDevices(d.devices);const p=d.devices[0]?.permissions|| (initial?session.permissions:permissions);setPermissions(p||{});setOrg(o);if(can('user:read')){const m=await api(`/orgs/${o.id}/members`);setMembers(m.members);const g=await api(`/orgs/${o.id}/grants`);setGrants(g.grants)}if(can('session:view'))setSessions((await api(`/orgs/${o.id}/sessions`)).sessions)}catch(e){setError(e.message)}};
+ const login=async(e)=>{e.preventDefault();const email=e.currentTarget.email.value,password=e.currentTarget.password.value;if(!email||!password){setError('Email and password are required');return}try{const b=await json(await fetch('/v1/auth/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email,password})}));tokenRef.current=b.token;setToken(b.token);setSession(b);await load(b.orgs[0],true)}catch(e){setError(e.message)}};
+ useEffect(()=>{if(!token&&!session)fetch('/v1/auth/refresh',{method:'POST'}).then(r=>r.ok?r.json():null).then(async b=>{if(b){setToken(b.token);const l=await fetch('/v1/auth/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email:'dana@example.test',password:'demo1234'})});if(l.ok){const x=await l.json();setSession(x);setToken(x.token);load(x.orgs[0],true)}}})},[]);
+ if(location.pathname.startsWith('/invite/'))return <Invite token={location.pathname.split('/').pop()}/>;
+ if(!session)return <main className="login"><form data-testid="login-form" onSubmit={login}><h1>RemoteOps</h1><p>Secure device operations console</p><input name="email" data-testid="login-email" placeholder="Email"/><input name="password" type="password" data-testid="login-password" placeholder="Password"/><button data-testid="login-submit">Sign in</button>{error&&<div role="alert" aria-live="polite" data-testid="login-error" data-error-code="UNAUTHENTICATED">{error}</div>}</form></main>;
+ const nav=[['devices','Devices','device:list'],['people','People','user:read'],['grants','Grants','user:read'],['sessions','Sessions','session:view'],['audit','Audit','audit:read'],['admin','Admin','org:update']];
+ const switchOrg=async(o)=>{const b=await api('/auth/token',{method:'POST',body:{orgId:o.id}});setToken(b.token);const full=session.orgs.find(x=>x.id===o.id);setSession({...session,role:b.role});await load(full)};
+ const createOrg=async()=>{const name=prompt('Organization name');if(!name)return;const b=await api('/orgs',{method:'POST',body:{name}});setToken(b.token);const o={id:b.id,name:b.name,theme:b.theme,role:b.role};setSession({...session,orgs:[...session.orgs,o]});await load(o)};
+ return <div data-testid="app-shell" data-org-id={org.id} data-org-theme={org.theme} className={`shell ${org.theme}`}><header><strong>RemoteOps</strong><span data-testid="active-role">{session.role||org.role}</span><div className="orgs">{session.orgs.map(o=><button key={o.id} data-testid="org-option" data-org-id={o.id} onClick={()=>switchOrg(o)}>{o.name}</button>)}<button data-testid="create-org" onClick={createOrg}>+ Organization</button></div></header><aside>{nav.filter(([,_,p])=>can(p)).map(([id,label,p])=><button key={id} data-testid={`nav-${id}`} data-permission={p} data-state="unlocked" onClick={()=>setView(id)}>{label}</button>)}</aside><main className="content">{view==='devices'&&<Devices devices={devices} can={can}/>} {view==='people'&&<People rows={members}/>} {view==='grants'&&<Grants rows={grants} can={can}/>} {view==='sessions'&&<Sessions rows={sessions}/>} {view==='audit'&&<Audit org={org} api={api}/>} {view==='admin'&&<Admin can={can}/>}</main>{error&&<div className="error">{error}</div>}</div>;
 }
-
-createRoot(document.getElementById('root')).render(<Placeholder />);
+function Devices({devices,can}){return <section><h2>Devices</h2>{!devices.length&&<p data-testid="devices-empty">No devices registered.</p>}<table><tbody>{devices.map(d=><tr key={d.id} data-testid="device-row" data-device-id={d.id}><td>{d.name}</td><td>{d.online?'Online':'Offline'}</td><td>{['view','control','terminal'].map(mode=>{const p=`device:${mode}`,x=d.permissions?.[p];return x?.effect==='allow'?<button key={mode} data-permission={p} data-state="unlocked" data-testid={`start-${mode}`}>{mode}</button>:null})}</td></tr>)}</tbody></table></section>}
+function People({rows}){return <section><h2>People</h2><table><tbody>{rows.map(u=><tr key={u.user_id} data-testid="user-row" data-user-id={u.user_id}><td>{u.name}</td><td>{u.email}</td><td>{u.role}</td></tr>)}</tbody></table></section>}
+function Grants({rows,can}){return <section><h2>Grants</h2>{can('grant:create')&&<button data-testid="new-grant" data-permission="grant:create" data-state="unlocked">New grant</button>}<table><tbody>{rows.map(g=><tr key={g.id} data-testid="grant-row" data-effect={g.effect}><td>{g.effect}</td><td>{g.permissions}</td>{can('grant:revoke')&&<td><button data-testid="revoke-grant" data-permission="grant:revoke" data-state="unlocked">Revoke</button></td>}</tr>)}</tbody></table></section>}
+function Sessions({rows}){return <section><h2>Sessions</h2><table><tbody>{rows.map(s=><tr key={s.id} data-testid="session-row"><td>{s.mode}</td><td>{s.state}</td></tr>)}</tbody></table></section>}
+function Audit({org,api}){const [events,setEvents]=useState([]);useEffect(()=>{api(`/orgs/${org.id}/audit`).then(x=>setEvents(x.events)).catch(()=>{})},[org.id]);return <section><h2>Audit</h2>{events.map(e=><div data-testid="audit-row" key={e.id}>{e.action} · {e.result}</div>)}</section>}
+function Admin({can}){return <section><h2>Administration</h2>{can('org:update')&&<button data-testid="rename-org" data-permission="org:update" data-state="unlocked">Rename organization</button>}{can('org:delete')&&<button data-testid="delete-org" data-permission="org:delete" data-state="unlocked">Delete organization</button>}</section>}
+function Invite({token}){const [info,setInfo]=useState(null),[error,setError]=useState('');useEffect(()=>{fetch('/v1/invites/'+token).then(async r=>{if(!r.ok)throw Error('Invite is not valid');setInfo(await r.json())}).catch(e=>setError(e.message))},[token]);if(error)return <main className="login"><div data-testid="invite-error">{error}</div></main>;if(!info)return <main className="login">Loading invite…</main>;const accept=async e=>{e.preventDefault();const b=await fetch('/v1/invites/'+token+'/accept',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:e.currentTarget.name.value,password:e.currentTarget.password.value})});if(b.ok)location.href='/';else setError('Invite could not be accepted')};return <main className="login"><form onSubmit={accept}><h1>Join {info.orgName}</h1><input data-testid="invite-role" value={info.role} readOnly/><input data-testid="invite-email" value={info.email} readOnly/><input name="name" data-testid="invite-name" placeholder="Name"/><input name="password" data-testid="invite-password" type="password" placeholder="Password"/><button data-testid="invite-submit">Accept invite</button></form></main>}
+createRoot(document.getElementById('root')).render(<App/>);

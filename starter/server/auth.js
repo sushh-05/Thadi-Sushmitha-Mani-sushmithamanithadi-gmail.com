@@ -71,12 +71,26 @@ export function issueAccessToken({ userId, orgId, role, permVersion }, secret) {
 // `node scripts/check-jwt.js` is the public test suite for this function.
 // ---------------------------------------------------------------------------
 export function verifyAccessToken(token, secret) {
-  // YOURS TO WRITE. Every failure mode listed above must be a 401 UNAUTHENTICATED.
-  // `node scripts/check-jwt.js` is the public suite for this function.
-  throw Object.assign(
-    new Error('TODO: server/auth.js — verifyAccessToken() is yours to write (AUTH-DATA-MODEL.md §10).'),
-    { code: 'NOT_IMPLEMENTED' }
-  );
+  try {
+    if (typeof token !== 'string') throw new Error('token');
+    const parts = token.split('.');
+    if (parts.length !== 3 || parts.some((p) => !p)) throw new Error('segments');
+    const [hs, ps, ss] = parts;
+    const header = JSON.parse(unb64(hs).toString('utf8'));
+    const claims = JSON.parse(unb64(ps).toString('utf8'));
+    if (!header || typeof header !== 'object' || Array.isArray(header)) throw new Error('header');
+    if (!claims || typeof claims !== 'object' || Array.isArray(claims)) throw new Error('claims');
+    if (header.alg !== ALG || header.typ !== 'JWT') throw new Error('alg');
+    const expected = createHmac('sha256', secret).update(`${hs}.${ps}`).digest();
+    const supplied = unb64(ss);
+    if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) throw new Error('signature');
+    const now = Math.floor(Date.now() / 1000);
+    if (typeof claims.exp !== 'number' || !Number.isFinite(claims.exp) || claims.exp <= now) throw new Error('exp');
+    if (claims.iss !== ISS || claims.aud !== AUD || typeof claims.jti !== 'string' || !claims.jti) throw new Error('claims');
+    return claims;
+  } catch {
+    throw unauthenticated('invalid access token');
+  }
 }
 
 

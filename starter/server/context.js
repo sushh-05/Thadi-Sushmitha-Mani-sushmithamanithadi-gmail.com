@@ -16,14 +16,21 @@
 // authenticate(db, secret) returns (req, params) => caller, where caller carries at
 // least { userId, orgId, role, membership, claims }.
 
-const todo = () =>
-  Object.assign(
-    new Error('TODO: server/context.js — authenticate() is yours to write (BRIEF.md §3).'),
-    { code: 'NOT_IMPLEMENTED' }
-  );
+import { verifyAccessToken, assertFresh } from './auth.js';
+import { notFound, unauthenticated } from './http.js';
 
 export function authenticate(db, secret) {
   return function buildContext(req, params) {
-    throw todo();
+    const raw = req.headers.authorization;
+    if (typeof raw !== 'string' || !/^Bearer\s+[^\s]+$/.test(raw)) throw unauthenticated();
+    const claims = verifyAccessToken(raw.slice(7).trim(), secret);
+    const membership = db.prepare(
+      `SELECT m.*, o.deleted_at AS org_deleted FROM memberships m JOIN organizations o ON o.id=m.org_id
+       WHERE m.user_id=? AND m.org_id=?`
+    ).get(claims.sub, claims.org);
+    if (!membership || membership.org_deleted || membership.status !== 'active') throw unauthenticated('membership is not active');
+    assertFresh(claims, membership);
+    if (params?.org && params.org !== claims.org) throw notFound();
+    return { userId: claims.sub, orgId: claims.org, role: membership.role, membership, claims };
   };
 }

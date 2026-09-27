@@ -50,12 +50,13 @@ export function send(res, status, body) {
 }
 
 export function sendError(res, err, requestId) {
-  const status = err instanceof HttpError ? err.status : 500;
-  const code = err instanceof HttpError ? err.code : 'INTERNAL';
+  const busy = err?.code === 'SQLITE_CONSTRAINT_UNIQUE' && String(err.message).includes('sessions.device_id');
+  const status = busy ? 409 : err instanceof HttpError ? err.status : 500;
+  const code = busy ? 'DEVICE_BUSY' : err instanceof HttpError ? err.code : 'INTERNAL';
 
   // Never leak internals, and never echo request bodies — they can contain
   // stream keys and invite tokens.
-  const message = err instanceof HttpError ? err.message : 'internal error';
+  const message = busy ? 'device already has an exclusive session' : err instanceof HttpError ? err.message : 'internal error';
 
   if (!(err instanceof HttpError)) {
     console.error(`[${requestId}] unhandled:`, err);
