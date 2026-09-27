@@ -1,9 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const PORT = Number(process.env.PLAYWRIGHT_PORT ?? 8124);
-const startCommand = process.platform === 'win32'
-  ? 'npm.cmd run build && node scripts/e2e-server.js'
-  : 'npm run build && node scripts/e2e-server.js';
+const startCommand = 'node scripts/e2e-server.js';
 
 // One process serves both halves, so the test server is the real server — not a
 // stand-in. `npm test` builds the SPA first, then boots it against a throwaway DB.
@@ -15,7 +13,7 @@ export default defineConfig({
   reporter: [['list']],
 
   use: {
-    baseURL: `http://localhost:${PORT}`,
+    baseURL: `http://127.0.0.1:${PORT}`,
     trace: 'retain-on-failure',
   },
 
@@ -23,7 +21,7 @@ export default defineConfig({
 
   webServer: {
     command: startCommand,
-    url: `http://localhost:${PORT}/`,
+    url: `http://127.0.0.1:${PORT}/`,
     reuseExistingServer: true,
     timeout: 30_000,
     env: {
@@ -33,3 +31,4 @@ export default defineConfig({
     },
   },
 });
+
