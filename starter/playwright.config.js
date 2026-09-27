@@ -19,12 +19,11 @@ export default defineConfig({
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
 
   webServer: {
-    command: 'node scripts/load-db.js && node server/index.js',
+    command: 'node scripts/e2e-server.js',
     url: `http://localhost:${PORT}/`,
     reuseExistingServer: false,
     timeout: 30_000,
     env: {
-      DATABASE_FILE: 'e2e.db',
       PORT: String(PORT),
       NODE_ENV: 'production',
       JWT_SECRET: 'e2e-secret',
