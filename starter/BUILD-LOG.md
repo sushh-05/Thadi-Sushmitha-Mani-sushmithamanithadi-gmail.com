@@ -87,3 +87,14 @@ I implemented defensive HS256 verification, structural organization scoping, dat
 
 ### Next step
 Run the browser suite from a clean checkout; the backend and production build are green.
+
+## 2026-09-27 23:29 — Final state at submission
+
+Attempted a fix for invite-accept session behavior; surfaced a different, earlier failure
+(invite-role not rendering on /invite/{token} page load) rather than resolving the original
+issue. Reverted the change — root cause needs more investigation than remains in the time box.
+Final state: JWT 43/43, permissions 35/35, personalisation 18/18, API 66/66, UI 21/25.
+Known UI gaps: grants-list/org-option counts off-by-one (likely org-scoping or list-append
+bug in web/), and invite redemption flow has an unresolved rendering issue on the invite details
+page. Backend permission engine, isolation, and lifecycle rules are complete and passing their
+full public suites.
