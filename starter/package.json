@@ -6,7 +6,7 @@
   "description": "Q1 — multi-org permission console. One process: node:http API + Vite/React SPA.",
   "scripts": {
     "dev": "node --watch-path=./server --watch server/index.js",
-    "build": "vite build web --configLoader runner --outDir dist",
+    "build": "vite build --configLoader runner",
     "start": "NODE_ENV=production node server/index.js",
     "db:reset": "rm -f app.db app.db-wal app.db-shm && npm run db:load",
     "db:load": "node scripts/load-db.js",
