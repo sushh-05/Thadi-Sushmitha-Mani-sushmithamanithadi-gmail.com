@@ -26,6 +26,7 @@ export default defineConfig({
     timeout: 30_000,
     env: {
       PORT: String(PORT),
+      HOST: '127.0.0.1',
       NODE_ENV: 'production',
       JWT_SECRET: 'e2e-secret',
     },

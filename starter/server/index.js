@@ -19,6 +19,7 @@ import { registerRoutes } from './routes/index.js';
 
 const DEV = process.env.NODE_ENV !== 'production';
 const PORT = Number(process.env.PORT ?? 8080);
+const HOST = process.env.HOST ?? '127.0.0.1';
 const SECRET = process.env.JWT_SECRET ?? 'dev-secret-change-me';
 const DIST = fileURLToPath(new URL('../dist/', import.meta.url));
 
@@ -120,8 +121,8 @@ const server = http.createServer((req, res) => {
   return serveStatic(req, res, url);
 });
 
-server.listen(PORT, () => {
-  console.log(`RemoteOps on http://localhost:${PORT}  (${DEV ? 'development' : 'production'})`);
+server.listen(PORT, HOST, () => {
+  console.log(`RemoteOps on http://${HOST}:${PORT}  (${DEV ? 'development' : 'production'})`);
 });
 
 for (const signal of ['SIGINT', 'SIGTERM']) {
