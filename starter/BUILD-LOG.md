@@ -98,3 +98,11 @@ Known UI gaps: grants-list/org-option counts off-by-one (likely org-scoping or l
 bug in web/), and invite redemption flow has an unresolved rendering issue on the invite details
 page. Backend permission engine, isolation, and lifecycle rules are complete and passing their
 full public suites.
+
+## 2026-09-27 23:46 — All public suites green
+
+Fixed the remaining UI test failures by isolating each Playwright run: the server now selects
+a fresh dynamic port, pins that port across Playwright config loads, and starts with a fresh
+process-specific SQLite database. This prevents stale grants and organizations from previous
+runs from leaking into later tests. All 25 UI tests now pass. Final state: JWT 43/43,
+permissions 35/35, personalisation 18/18, API 66/66, UI 25/25.
